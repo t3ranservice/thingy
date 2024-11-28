@@ -9,6 +9,7 @@ from decimal import Decimal, getcontext
 from pybit.unified_trading import HTTP
 import os
 import sqlite3
+from datetime import datetime
 
 
 def shortfloat(data):
@@ -19,7 +20,7 @@ def get_latest_records(session):
     data = []
     cursor = ""
     while(True):
-        response = session.get_order_history(category="spot", cursor=cursor, orderStatus="Filled")
+        response = session.get_executions(category="spot", cursor=cursor)
         if response['result']['list']:
             data.append(response["result"])
         cursor = response["result"]["nextPageCursor"]
@@ -97,8 +98,6 @@ def main():
                            (row['Spot Pairs'], shortfloat(row['Filled Value']), row['Filled Price'], row['Direction'], row['Timestamp (UTC+0)'], row["Transaction ID"] ))
             connection.commit()
             
-        connection.close()
-    
         
     # display_table(view)
     session = HTTP(
@@ -106,18 +105,20 @@ def main():
         api_key=os.getenv('BYBIT_KEY'),
         api_secret=os.getenv('BYBIT_SECRET')
     )
-    session.get_executions()
     # https://bybit-exchange.github.io/docs/v5/order/order-list - orderStatus == Filled, cumExecValue
     data = get_latest_records(session)
+    print(data)
     for page in data:
         for order in page["list"]:
-            pass
+            sql_insert_historical_record(cursor, order, connection)
+    connection.close()
 
 
-# def sql_insert_historical_record(cursor, order):
-#     cursor.execute("INSERT INTO historical_data (spot_pair, filled_value, filled_price, direction, timestamp, transaction_id) VALUES(?, ?, ?, ?, ?, ?)",
-#                 (order['symbol'], shortfloat(row['Filled Value']), row['Filled Price'], row['Direction'], row['Timestamp (UTC+0)'], row["Transaction ID"] ))
-#     connection.commit()
+def sql_insert_historical_record(cursor, order, connection):
+    cursor.execute("INSERT INTO historical_data (spot_pair, filled_value, filled_price, direction, timestamp, transaction_id) VALUES(?, ?, ?, ?, ?, ?)",
+    (order['symbol'], shortfloat(order['execValue']), order['execPrice'], order['side'].upper(), datetime.fromtimestamp(int(order['execTime'])/1000), order['execId']))
+    connection.commit()
+
 
 
 
