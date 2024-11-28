@@ -68,13 +68,22 @@ def process_data():
 
     for k, v in final_dict.items():
         final_dict[k]["Profit"] = final_dict[k]['Raw received'] + final_dict[k]['Value held'] - final_dict[k]['Total spent']
-    
+    final_dict = dict(sorted(final_dict.items(), key=lambda item: item[1]["Profit"], reverse=True))
+
     return final_dict
 
 def main():
     view = process_data()
     display_table(view)
-    
+    session = HTTP(
+        testnet=False,
+        api_key=os.getenv('BYBIT_KEY'),
+        api_secret=os.getenv('BYBIT_SECRET')
+    )
+    # https://bybit-exchange.github.io/docs/v5/order/order-list - orderStatus == Filled, cumExecValue
+    response = session.get_order_history(category="spot")
+    print(response)
+
 
 
 main()
