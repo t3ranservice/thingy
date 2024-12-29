@@ -1,5 +1,5 @@
 """
-ASGI config for thingy project.
+ASGI config for tradingstat project.
 
 It exposes the ASGI callable as a module-level variable named ``application``.
 
@@ -11,6 +11,6 @@ import os
 
 from django.core.asgi import get_asgi_application
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'thingy.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'tradingstat.settings')
 
 application = get_asgi_application()

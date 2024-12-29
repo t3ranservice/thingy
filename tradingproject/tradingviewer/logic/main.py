@@ -9,23 +9,47 @@ from decimal import Decimal, getcontext
 from pybit.unified_trading import HTTP
 import os
 import sqlite3
-from queries import *
-from helpers import *
+from tradingviewer.logic.queries import *
+from tradingviewer.logic.helpers import *
+import time
+from datetime import datetime
 
+def sql_insert_historical_record(cursor, order, connection):
+    cursor.execute("INSERT INTO transactions (spot_pair, direction, filled_value, filled_price, filled_quantity, fee, timestamp, transaction_id) VALUES(?, ?, ?, ?, ?, ?, ?, ?)",
+    (order['symbol'], order['side'].upper(), shortfloat(order['execValue']), order['execPrice'], order['execQty'], order['execFee'], order['execTime'], order['execId']))
+    connection.commit()
 
+def epoch(days):
+    return days * 24 * 60 * 60 * 1000
 
-def get_latest_records(session):
+def get_time_ranges(days_left=21):
+    time_ranges = []
+    week_delta = epoch(days=7)
+    endTime = int(time.time() * 1000)
+    while (days_left != 0):
+        delta, days_to_substract = (epoch(days=days_left), days_left) if days_left < 7 else (week_delta, 7)
+        startTime = endTime - delta
+        time_ranges.append({'start_time': startTime, 'end_time': endTime})
+        endTime = startTime
+        days_left = days_left - days_to_substract
+    return time_ranges
+
+def get_latest_records(session, days=51):
+    time_ranges = get_time_ranges(days)
     data = []
     cursor = ""
-    while(True):
-        response = session.get_executions(category="spot", cursor=cursor)
-        if response['result']['list']:
-            data.append(response["result"])
-        cursor = response["result"]["nextPageCursor"]
-        if cursor == "":
-            print("Next cursor is empty, quiting...")
-            break
+    for time_range in time_ranges:
+        while(True):
+            response = session.get_executions(category="spot",cursor=cursor, startTime=time_range['start_time'], endTime=time_range['end_time'])
+            # print(response)
+            if response['result']['list']:
+                data.append(response["result"])
+            cursor = response["result"]["nextPageCursor"]
+            if cursor == "":
+                print("Next cursor is empty, quiting...")
+                break
     return data
+
 
 def display_table(data):
     # Prepare table rows
@@ -64,8 +88,8 @@ def process_data():
         else:
             final_dict[spot_pair]['Value held'] = float(row['usdValue'])
     
-
-    with open('123.csv', newline='') as csvfile:
+    print(os.getcwd())
+    with open('./tradingviewer/logic/123.csv', newline='') as csvfile:
         reader = csv.DictReader(csvfile)
 
         for row in reader:
@@ -94,42 +118,34 @@ def process_csv(csvfile, connection):
             connection.commit()
 
 
+#https://bybit-exchange.github.io/docs/v5/websocket/private/order
 def main():
     data = process_data()
     display_table(data)
-#     connection = sqlite3.connect('trading.db')
-#     cursor = connection.cursor()
+    connection = sqlite3.connect('db.sqlite3')
+    cursor = connection.cursor()
 
-#     with open('file.csv', newline='') as csvfile:
-#         reader = csv.DictReader(csvfile)
-        
-#         for row in reader:
-#             cursor.execute("INSERT INTO historical_data (spot_pair, filled_value, filled_price, direction, timestamp, transaction_id) VALUES(?, ?, ?, ?, ?, ?)",
-#                            (row['Spot Pairs'], shortfloat(row['Filled Value']), row['Filled Price'], row['Direction'], row['Timestamp (UTC+0)'], row["Transaction ID"] ))
-#             connection.commit()
-            
-        
-#     # display_table(view)
-#     session = HTTP(
-#         testnet=False,
-#         api_key=os.getenv('BYBIT_KEY'),
-#         api_secret=os.getenv('BYBIT_SECRET')
-#     )
+    with open('tradingviewer/logic/123.csv', newline='') as csvfile:
+        reader = csv.DictReader(csvfile)
+        for row in reader:
+            cursor.execute("INSERT INTO transactions (spot_pair, direction, filled_value, filled_price, filled_quantity, fee, timestamp, transaction_id) VALUES(?, ?, ?, ?, ?, ?, ?, ?)",
+                           (row['Spot Pairs'], row['Direction'], shortfloat(row['Filled Value']), row['Filled Price'], row['Filled Quantity'], float(row['Fees']) * float(row['Filled Price']), int(datetime.strptime(row['Timestamp (UTC+0)'], "%Y-%m-%d %H:%M:%S").timestamp()), row["Transaction ID"] ))
+            connection.commit()
+
+    session = HTTP(
+        testnet=False,
+        api_key=os.getenv('BYBIT_KEY'),
+        api_secret=os.getenv('BYBIT_SECRET')
+    )
 #     # https://bybit-exchange.github.io/docs/v5/order/order-list - orderStatus == Filled, cumExecValue
-#     data = get_latest_records(session)
-#     print(data)
-#     for page in data:
-#         for order in page["list"]:
-#             sql_insert_historical_record(cursor, order, connection)
-#     connection.close()
-
-
-# def sql_insert_historical_record(cursor, order, connection):
-#     cursor.execute("INSERT INTO historical_data (spot_pair, filled_value, filled_price, direction, timestamp, transaction_id) VALUES(?, ?, ?, ?, ?, ?)",
-#     (order['symbol'], shortfloat(order['execValue']), order['execPrice'], order['side'].upper(), datetime.fromtimestamp(int(order['execTime'])/1000), order['execId']))
-#     connection.commit()
+    data = get_latest_records(session)
+    print(data)
+    for page in data:
+        for order in page["list"]:
+            sql_insert_historical_record(cursor, order, connection)
+    connection.close()
 
 
 
-
-main()
+if __name__ == "main":
+    main()
