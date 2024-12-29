@@ -9,11 +9,9 @@ from decimal import Decimal, getcontext
 from pybit.unified_trading import HTTP
 import os
 import sqlite3
-from datetime import datetime
+from queries import *
+from helpers import *
 
-
-def shortfloat(data):
-    return round(float(data), 2)
 
 
 def get_latest_records(session):
@@ -86,38 +84,36 @@ def process_data():
 
     return final_dict
 
+def process_csv(csvfile, connection):
+     cursor = connection.cursor()
+     with open(csvfile, newline='') as csvfile:
+        reader = csv.DictReader(csvfile)
+        for row in reader:
+            cursor.execute("INSERT INTO historical_data (spot_pair, filled_value, filled_price, direction, timestamp, transaction_id) VALUES(?, ?, ?, ?, ?, ?)",
+                           (row['Spot Pairs'], shortfloat(row['Filled Value']), row['Filled Price'], row['Direction'], convert_epoch(row['Timestamp (UTC+0)']), row["Transaction ID"] ))
+            connection.commit()
+
+
 def main():
     connection = sqlite3.connect('trading.db')
     cursor = connection.cursor()
-
-    with open('file.csv', newline='') as csvfile:
-        reader = csv.DictReader(csvfile)
-        
-        for row in reader:
-            cursor.execute("INSERT INTO historical_data (spot_pair, filled_value, filled_price, direction, timestamp, transaction_id) VALUES(?, ?, ?, ?, ?, ?)",
-                           (row['Spot Pairs'], shortfloat(row['Filled Value']), row['Filled Price'], row['Direction'], row['Timestamp (UTC+0)'], row["Transaction ID"] ))
-            connection.commit()
-            
-        
-    # display_table(view)
     session = HTTP(
         testnet=False,
         api_key=os.getenv('BYBIT_KEY'),
         api_secret=os.getenv('BYBIT_SECRET')
     )
-    # https://bybit-exchange.github.io/docs/v5/order/order-list - orderStatus == Filled, cumExecValue
+
+    process_csv('file.csv', connection)
+
     data = get_latest_records(session)
-    print(data)
     for page in data:
         for order in page["list"]:
             sql_insert_historical_record(cursor, order, connection)
     connection.close()
 
 
-def sql_insert_historical_record(cursor, order, connection):
-    cursor.execute("INSERT INTO historical_data (spot_pair, filled_value, filled_price, direction, timestamp, transaction_id) VALUES(?, ?, ?, ?, ?, ?)",
-    (order['symbol'], shortfloat(order['execValue']), order['execPrice'], order['side'].upper(), datetime.fromtimestamp(int(order['execTime'])/1000), order['execId']))
-    connection.commit()
+    # https://bybit-exchange.github.io/docs/v5/order/order-list - orderStatus == Filled, cumExecValue
+
 
 
 
