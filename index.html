@@ -1,0 +1,82 @@
+<!-- <div class="tradingview-widget-container">
+    <div id="tradingview_12345"></div>
+    <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+    <script type="text/javascript">
+        new TradingView.widget({
+            "container_id": "tradingview_12345",
+            "symbol": "NASDAQ:AAPL",
+            "interval": "D",
+            "theme": "light",
+            "style": "1",
+            "locale": "en",
+            "toolbar_bg": "#f1f3f6",
+            "enable_publishing": false,
+            "allow_symbol_change": true,
+            "calendar": true,
+            "studies": [
+                "RSI@tv-basicstudies"
+            ],
+            "hide_side_toolbar": false
+        });
+    </script>
+</div> -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BTCUSDT Card</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="card">
+        <div class="header">
+            <div class="title">BTCUSDT</div>
+            <div class="status" id="status">active</div>
+        </div>
+        <div class="info">
+            <div class="row">
+                <div class="label">buy_price</div>
+                <div class="value">1.1</div>
+            </div>
+            <div class="row">
+                <div class="label">currently held</div>
+                <div class="value" id="currently-held">66</div>
+            </div>
+            <div class="row">
+                <div class="label">an_field</div>
+                <div class="value">value</div>
+            </div>
+        </div>
+        <div class="footer">
+            <div class="circle-container">
+                <div class="circle" id="circle">
+                    <span id="percentage-text">+10%</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        // Update circle border color and text based on percentage value
+        const percentageElement = document.getElementById('percentage-text');
+        const circleElement = document.getElementById('circle');
+        const percentageValue = parseFloat(percentageElement.innerText);
+
+        if (percentageValue < 0) {
+            circleElement.style.borderColor = '#ff4d4f'; // Modern red
+        } else {
+            circleElement.style.borderColor = '#50c878'; // Modern emerald green
+        }
+
+        // Dynamically update the status text color
+        const currentlyHeld = parseInt(document.getElementById('currently-held').innerText, 10);
+        const statusElement = document.getElementById('status');
+
+        if (currentlyHeld > 0) {
+            statusElement.style.color = 'green';
+        } else {
+            statusElement.style.color = 'red';
+        }
+    </script>
+</body>
+</html>
