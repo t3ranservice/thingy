@@ -22,7 +22,7 @@ def sql_insert_historical_record(cursor, order, connection):
 def epoch(days):
     return days * 24 * 60 * 60 * 1000
 
-def get_time_ranges(days_left=21):
+def get_time_ranges(days_left=7):
     time_ranges = []
     week_delta = epoch(days=7)
     endTime = int(time.time() * 1000)

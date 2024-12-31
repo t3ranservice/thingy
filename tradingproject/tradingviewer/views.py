@@ -4,15 +4,42 @@ from django.http import JsonResponse
 import os
 import sys
 from tradingviewer.logic.main import *
+from .models import *
+
 
 
 def index(request):
-    return HttpResponse("Hello, world. You're at the polls index.")
+
+    return render(request, 'tradingviewer/index.html')
 
 
 def process_data_plain(request):
-    data = JsonResponse(process_data())
-    return HttpResponse(data)
+    if request.method == "POST":
+        input_value = int(request.POST.get('input_number', 0))
+        
+        session = HTTP(
+            testnet=False,
+            api_key=os.getenv('BYBIT_KEY'),
+            api_secret=os.getenv('BYBIT_SECRET')
+        )
+        data = get_latest_records(session, days=input_value)
+        for page in data:
+                for order in page["list"]:
+                    try:
+                        Transaction.objects.create(
+                            symbol=order['symbol'],
+                            direction=order['side'].upper(),
+                            filled_value=shortfloat(order['execValue']),
+                            filled_price=order['execPrice'],
+                            filled_quantity=order['execQty'],
+                            fee=order['execFee'],
+                            timestamp=order['execTime'],
+                            transaction_id=order['execId']
+                        )
+                    except:
+                        print("Transaction already exists, skipping..")
+    return render(request, 'tradingviewer/process_data.html')
+
 
 def process_data_table(request):
     data = process_data()
@@ -20,5 +47,17 @@ def process_data_table(request):
     return HttpResponse(display_table(data))
 
 def test_endpoint(request):
-    main()
+    all_transactions = Transaction.objects.all()
+    tmp_dict = defaultdict(lambda: {'buy_counter': 0, 'sell_counter': 0, 'average_buy_price': 0, 
+                                    'average_sell_price': 0, 'all_buy_volumes': 0, 'all_sell_volumes': 0})
+    for transaction in all_transactions:
+        if transaction.direction == "BUY":
+            tmp_dict[transaction.symbol]['all_buy_prices'] =+ transaction.filled_price
+            tmp_dict[transaction.symbol]['all_buy_volumes'] =+ transaction.filled_value
+            tmp_dict[transaction.symbol]['buy_counter'] =+ 1
+        else:
+            tmp_dict[transaction.symbol]['all_sell_prices'] =+ transaction.filled_price
+            tmp_dict[transaction.symbol]['all_sell_volumes'] =+ transaction.filled_value
+            tmp_dict[transaction.symbol]['sell_counter'] =+ 1
+
     return HttpResponse("Test Endpoint. Check console.")
