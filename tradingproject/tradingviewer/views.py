@@ -61,3 +61,12 @@ def test_endpoint(request):
             tmp_dict[transaction.symbol]['sell_counter'] =+ 1
 
     return HttpResponse("Test Endpoint. Check console.")
+
+
+# Average buy price = sum(all_buy_prices)/counter
+# Held currently (token) = retrieve in real time
+# Held currently (USDT) = retrieve in real time
+# Average sell price = sum(all_sell_prices)/counter
+# Realized profit = all_sell_prices
+# Unrealized profit = 
+# Total current profit = all_
