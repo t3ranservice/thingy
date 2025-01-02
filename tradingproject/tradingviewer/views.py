@@ -61,3 +61,23 @@ def test_endpoint(request):
             tmp_dict[transaction.symbol]['sell_counter'] =+ 1
 
     return HttpResponse("Test Endpoint. Check console.")
+
+# Average buy price = all_buy_prices/counter
+# Average sell price = all_sell_prices/counter
+# Currently held (assets) = retrieve from API
+# Currently held (USDT) = retrieve from API
+# Profit (both realized and unrealized) = all_sell_volumes - all_buy_volumes + current (from API)
+
+# IN DB, WE WILL HAVE ONLY THESE:
+# average_buy_price, average_sell_price, net (realized profit)  <---- YES
+
+# Only if new transaction is added, we need to run this recalculation  <--- YES
+# Actually easier to set up SQL script on trigger and let it do the job <--- That's how it will be done
+# Essentially we need to overwrite a row WHERE user_id & symbol <---- There is a query for overwrite
+
+# We still need 1st time generation anyway <--- YES
+
+
+# 1 Flow
+# Get all transactions -> Disable trigger on asset_data --> Produce asset_data --> Enable trigger back
+# New transaction is added, if symbol exists --> Update, if symbol not exists --> Produce and add
