@@ -30,31 +30,25 @@
     <link rel="stylesheet" href="{% static 'tradingviewer/styles.css' %}">
 </head>
 <body>
+    <div class="cards-container">
+    {% for asset, data in context_dict %}
     <div class="card">
         <div class="header">
-            <div class="title">BTCUSDT</div>
+            <div class="title">{{ asset }}</div>
             <div class="status" id="status">active</div>
         </div>
         <div class="info">
             <div class="row">
                 <div class="label">Average buy price</div>
-                <div class="value">value</div>
+                <div class="value">{{ data.average_buy_price }}</div>
             </div>
             <div class="row">
-                <div class="label">Currently held (token)</div>
-                <div class="value" id="currently-held">value</div>
+                <div class="label">Average sell price</div>
+                <div class="value" id="currently-held">{{ data.average_sell_price }}</div>
             </div>
             <div class="row">
-                <div class="label">Currently held (USDT)</div>
-                <div class="value">value</div>
-            </div>
-            <div class="row">
-                <div class="label">Total spent</div>
-                <div class="value">value</div>
-            </div>
-            <div class="row">
-                <div class="label">Realized profit</div>
-                <div class="value">value</div>
+                <div class="label">Net</div>
+                <div class="value">{{ data.net }}</div>
             </div>
         </div>
         <div class="footer">
@@ -64,6 +58,8 @@
                 </div>
             </div>
         </div>
+    </div>
+    {% endfor %}
     </div>
     <script>
         // Update circle border color and text based on percentage value

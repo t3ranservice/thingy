@@ -16,9 +16,12 @@ class Transaction(models.Model):
 
 class AssetData(models.Model):
     symbol = models.CharField(max_length=8)
-    average_buy_price = models.FloatField
-    average_sell_price = models.FloatField
-    net = models.FloatField
+    average_buy_price = models.FloatField()
+    average_sell_price = models.FloatField()
+    net = models.FloatField()
+
+    class Meta:
+        db_table = 'asset_data'
 
 
 # DELIMITER $$

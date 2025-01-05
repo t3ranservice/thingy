@@ -5,6 +5,7 @@ import os
 import sys
 from tradingviewer.logic.main import *
 from .models import *
+from itertools import zip_longest
 
 
 
@@ -47,19 +48,51 @@ def process_data_table(request):
     return HttpResponse(display_table(data))
 
 def test_endpoint(request):
+    final_dict = defaultdict(lambda: {'average_buy_price': 0, 'average_sell_price': 0,
+                                      'net': 0})
     all_transactions = Transaction.objects.all()
-    tmp_dict = defaultdict(lambda: {'buy_counter': 0, 'sell_counter': 0, 'average_buy_price': 0, 
-                                    'average_sell_price': 0, 'all_buy_volumes': 0, 'all_sell_volumes': 0})
+    tmp_dict = defaultdict(lambda: {'buy_counter': 0, 'sell_counter': 0, 'all_buy_prices': 0, 
+                                    'all_sell_prices': 0, 'all_buy_volumes': 0, 'all_sell_volumes': 0, 'current_value_usdt': 0, })
+    session = HTTP(
+            testnet=False,
+            api_key=os.getenv('BYBIT_KEY'),
+            api_secret=os.getenv('BYBIT_SECRET')
+        )    
+    
     for transaction in all_transactions:
         if transaction.direction == "BUY":
-            tmp_dict[transaction.symbol]['all_buy_prices'] =+ transaction.filled_price
-            tmp_dict[transaction.symbol]['all_buy_volumes'] =+ transaction.filled_value
-            tmp_dict[transaction.symbol]['buy_counter'] =+ 1
+            tmp_dict[transaction.symbol]['all_buy_prices'] += transaction.filled_price
+            tmp_dict[transaction.symbol]['all_buy_volumes'] += transaction.filled_value
+            tmp_dict[transaction.symbol]['buy_counter'] += 1
         else:
-            tmp_dict[transaction.symbol]['all_sell_prices'] =+ transaction.filled_price
-            tmp_dict[transaction.symbol]['all_sell_volumes'] =+ transaction.filled_value
-            tmp_dict[transaction.symbol]['sell_counter'] =+ 1
+            tmp_dict[transaction.symbol]['all_sell_prices'] += transaction.filled_price
+            tmp_dict[transaction.symbol]['all_sell_volumes'] += transaction.filled_value
+            tmp_dict[transaction.symbol]['sell_counter'] += 1
 
+    wallet_balance = session.get_wallet_balance(accountType="UNIFIED")
+
+    for row in wallet_balance['result']['list'][0]['coin']:
+        spot_pair = f"{row['coin']}USDT"
+        if spot_pair == "USDTUSDT":
+            pass
+        else:
+            tmp_dict[spot_pair]['current_value_usdt'] = float(row['usdValue'])
+            tmp_dict[spot_pair]['current_value_asset'] = float(row['equity'])
+    
+    for key, value in tmp_dict.items():
+        AssetData.objects.update_or_create(symbol=key, average_buy_price=((value['all_buy_prices']/value['buy_counter']) if value['buy_counter'] != 0 else 0),
+                                 average_sell_price=((value['all_sell_prices']/value['sell_counter']) if value['sell_counter'] != 0 else 0), net=(value['all_buy_volumes']-value['all_sell_volumes']))
+    
+    for item in AssetData.objects.all():
+        final_dict[item.symbol]['average_buy_price'] = item.average_buy_price
+        final_dict[item.symbol]['average_sell_price'] = item.average_sell_price
+        final_dict[item.symbol]['net'] = item.net + tmp_dict[item.symbol]['current_value_usdt']
+        print(f"{item.symbol}: avg-b-p: {item.average_buy_price}, avg-s-p: {item.average_sell_price}, net: {item.net}")
+    # print(final_dict)
+    # print(final_dict.items())
+    # for k,v in final_dict.items():
+    #     print(k,v)
+    return render(request, 'tradingviewer/index.html', {'context_dict': final_dict.items()})
     return HttpResponse("Test Endpoint. Check console.")
 
 # Average buy price = all_buy_prices/counter
